@@ -1,93 +1,122 @@
 --[[
-    IZI HUB - Steal an Egg
-    Style: Chilli.lua Inspired
+    IZI HUB | Steal an Egg
+    Version: 1.0
+    Author: G1ngurik
 ]]
 
+-- 1. Загрузка библиотеки интерфейса
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
+-- 2. Создание главного окна
 local Window = Rayfield:CreateWindow({
    Name = "🔥 IZI HUB | Steal an Egg",
-   LoadingTitle = "Chilli Style Loading...",
+   LoadingTitle = "Загрузка IZI HUB...",
    LoadingSubtitle = "by G1ngurik",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = "IZI_HUB_Data",
-      FileName = "StealEggConf"
+      FileName = "StealEgg"
    }
 })
 
-local MainTab = Window:CreateTab("🏠 Main", 4483362458) -- Icons: lucide.dev
-local PlayerTab = Window:CreateTab("👤 Player", 4483362458)
+-- Переменные для работы функций
+getgenv().AutoFarm = false
+local lp = game.Players.LocalPlayer
 
--- ФУНКЦИИ АВТОФАРМА
-MainTab:CreateSection("Automation")
+-- 3. Вкладка "Главная"
+local MainTab = Window:CreateTab("🏠 Главная", 4483362458)
+MainTab:CreateSection("Автоматизация")
 
-local AutoFarmToggle = MainTab:CreateToggle({
-   Name = "Auto Steal Eggs (Safe)",
+-- Функция Авто-фарма
+MainTab:CreateToggle({
+   Name = "Авто-сбор яиц (Auto-Farm)",
    CurrentValue = false,
-   Flag = "Toggle1",
+   Flag = "AutoFarmFlag",
    Callback = function(Value)
       getgenv().AutoFarm = Value
-      while getgenv().AutoFarm do
-         task.wait(0.5)
-         pcall(function()
-            for _, v in pairs(workspace.Eggs:GetChildren()) do
-               if getgenv().AutoFarm and v:FindFirstChild("TouchInterest") then
-                  -- Телепорт к яйцу
-                  game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = v.CFrame
-                  firetouchinterest(game.Players.LocalPlayer.Character.Head, v, 0)
-                  task.wait(0.1)
-                  firetouchinterest(game.Players.LocalPlayer.Character.Head, v, 1)
-                  
-                  -- Телепорт на базу (возврат)
-                  local spawnPos = game.Players.LocalPlayer.RespawnLocation.CFrame
-                  game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = spawnPos + Vector3.new(0, 3, 0)
-                  task.wait(0.5)
+      
+      -- Цикл, который работает пока включен тумблер
+      task.spawn(function()
+         while getgenv().AutoFarm do
+            task.wait(0.3) -- Небольшая задержка, чтобы не кикнуло
+            pcall(function()
+               -- Ищем все яйца в папке Eggs (стандарт для этой игры)
+               local eggsFolder = workspace:FindFirstChild("Eggs")
+               if eggsFolder then
+                  for _, egg in pairs(eggsFolder:GetChildren()) do
+                     if getgenv().AutoFarm and egg:IsA("BasePart") and egg:FindFirstChild("TouchInterest") then
+                        -- 1. Летим к яйцу
+                        lp.Character.HumanoidRootPart.CFrame = egg.CFrame
+                        firetouchinterest(lp.Character.HumanoidRootPart, egg, 0)
+                        task.wait(0.1)
+                        firetouchinterest(lp.Character.HumanoidRootPart, egg, 1)
+                        
+                        -- 2. Летим на базу сдать яйцо (к твоему спавну)
+                        local mySpawn = lp.RespawnLocation
+                        if mySpawn then
+                           lp.Character.HumanoidRootPart.CFrame = mySpawn.CFrame + Vector3.new(0, 3, 0)
+                        end
+                        task.wait(0.5) -- Ждем сдачи яйца
+                     end
+                  end
                end
-            end
-         end)
-      end
-   end,
-})
-
-MainTab:CreateButton({
-   Name = "Highlight All Eggs (ESP)",
-   Callback = function()
-      for _, v in pairs(workspace.Eggs:GetChildren()) do
-         if not v:FindFirstChild("Highlight") then
-            local hl = Instance.new("Highlight", v)
-            hl.FillColor = Color3.fromRGB(255, 0, 0)
+            end)
          end
-      end
-      Rayfield:Notify({Title = "ESP", Content = "Яйца подсвечены!", Duration = 3})
+      end)
    end,
 })
 
--- НАСТРОЙКИ ИГРОКА
-PlayerTab:CreateSection("Movement")
+-- 4. Вкладка "Визуал"
+local VisualTab = Window:CreateTab("👁 Визуал", 4483362458)
+VisualTab:CreateSection("ESP")
+
+VisualTab:CreateButton({
+   Name = "Подсветить яйца (ESP)",
+   Callback = function()
+      local eggsFolder = workspace:FindFirstChild("Eggs")
+      if eggsFolder then
+         for _, egg in pairs(eggsFolder:GetChildren()) do
+            if not egg:FindFirstChild("Highlight") then
+               local hl = Instance.new("Highlight", egg)
+               hl.FillColor = Color3.fromRGB(255, 255, 0) -- Желтый цвет
+               hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            end
+         end
+         Rayfield:Notify({Title = "Успех", Content = "Все яйца теперь видны!", Duration = 3})
+      end
+   end,
+})
+
+-- 5. Вкладка "Персонаж"
+local PlayerTab = Window:CreateTab("👤 Персонаж", 4483362458)
+PlayerTab:CreateSection("Характеристики")
 
 PlayerTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 300},
+   Name = "Скорость бега",
+   Range = {16, 500},
    Increment = 1,
    Suffix = "Speed",
    CurrentValue = 16,
-   Flag = "Slider1",
    Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+      lp.Character.Humanoid.WalkSpeed = Value
    end,
 })
 
 PlayerTab:CreateSlider({
-   Name = "JumpPower",
+   Name = "Сила прыжка",
    Range = {50, 500},
    Increment = 1,
    Suffix = "Power",
    CurrentValue = 50,
-   Flag = "Slider2",
    Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+      lp.Character.Humanoid.JumpPower = Value
    end,
 })
 
-Rayfield:Notify({Title = "IZI HUB", Content = "Скрипт успешно запущен!", Duration = 5})
+-- Уведомление при запуске
+Rayfield:Notify({
+   Title = "IZI HUB Загружен!",
+   Content = "Приятной игры, G1ngurik!",
+   Duration = 5,
+   Image = 4483362458,
+})
