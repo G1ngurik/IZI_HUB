@@ -1,6 +1,6 @@
 --[[
-    IZI HUB | STEAL AN EGG (REMASTERED)
-    Based on Spicy Hub (Chilli.lua) Logic
+    IZI HUB | STEAL AN EGG (ULTIMATE WORKING)
+    Design: Chilli/Spicy Style
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -10,76 +10,80 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "Spicy Style Loading...",
    LoadingSubtitle = "by G1ngurik",
    ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "IZI_Data"
+      Enabled = false
    }
 })
 
 local lp = game.Players.LocalPlayer
 local char = lp.Character or lp.CharacterAdded:Wait()
 
--- ФУНКЦИЯ ПОИСКА БАЗЫ (ВАЖНО ДЛЯ РАБОТЫ)
-local function getMyBase()
-    local team = lp.Team
-    if team then
-        -- Ищем зону сдачи яиц по названию команды или цвету
-        for _, v in pairs(workspace:GetDescendants()) do
-            if v.Name == "Goal" or v.Name == "Deposit" or v.Name == tostring(team) then
-                return v
-            end
-        end
-    end
-    -- Если не нашли, возвращаем спавн
-    return lp.RespawnLocation
+-- Функция уведомлений (чтобы ты видел, что чит работает)
+local function Notify(text)
+    Rayfield:Notify({Title = "IZI HUB", Content = text, Duration = 2})
 end
 
--- ВКЛАДКА МЕЙН
+-- ВКЛАДКА: ГЛАВНАЯ
 local MainTab = Window:CreateTab("🏠 Main", 4483362458)
-MainTab:CreateSection("Авто-Фарм")
+MainTab:CreateSection("Рабочий Авто-Фарм")
 
-getgenv().AutoSteal = false
+getgenv().FarmActive = false
 
 MainTab:CreateToggle({
-   Name = "Auto Steal Eggs (РАБОТАЕТ)",
+   Name = "Авто-Сбор (Умный поиск)",
    CurrentValue = false,
-   Flag = "StealToggle",
+   Flag = "FarmToggle",
    Callback = function(Value)
-      getgenv().AutoSteal = Value
-      task.spawn(function()
-         while getgenv().AutoSteal do
-            pcall(function()
-               -- Ищем все яйца на карте
-               for _, obj in pairs(workspace:GetDescendants()) do
-                  if getgenv().AutoSteal and obj:IsA("TouchTransmitter") and obj.Parent.Name:lower():find("egg") then
-                     local egg = obj.Parent
-                     local hrp = lp.Character:FindFirstChild("HumanoidRootPart")
-                     local base = getMyBase()
-                     
-                     if hrp and egg then
-                        -- Летим к яйцу
-                        hrp.CFrame = egg.CFrame
-                        task.wait(0.2)
-                        
-                        -- Летим на базу сдать
-                        if base then
-                            hrp.CFrame = (base:IsA("BasePart") and base.CFrame or base.CFrame) + Vector3.new(0, 3, 0)
-                        end
-                        task.wait(0.3)
-                     end
+      getgenv().FarmActive = Value
+      if Value then
+          Notify("Авто-фарм запущен!")
+          task.spawn(function()
+              while getgenv().FarmActive do
+                  local foundEgg = false
+                  -- Ищем яйца везде в Workspace
+                  for _, obj in pairs(workspace:GetDescendants()) do
+                      if getgenv().FarmActive and obj:IsA("TouchTransmitter") and (obj.Parent.Name:lower():find("egg") or obj.Parent:FindFirstChild("MeshId")) then
+                          local egg = obj.Parent
+                          if egg:IsA("BasePart") then
+                              foundEgg = true
+                              print("Нашел яйцо: " .. egg.Name) -- Это появится в F9 консоли
+                              
+                              -- 1. Летим к яйцу
+                              lp.Character.HumanoidRootPart.CFrame = egg.CFrame
+                              firetouchinterest(lp.Character.HumanoidRootPart, egg, 0)
+                              task.wait(0.1)
+                              firetouchinterest(lp.Character.HumanoidRootPart, egg, 1)
+                              
+                              -- 2. Ищем базу твоей команды для сдачи
+                              local team = lp.Team and tostring(lp.Team) or "Neutral"
+                              for _, base in pairs(workspace:GetDescendants()) do
+                                  if base.Name:lower():find("goal") or base.Name:lower():find("deposit") or base.Name == team then
+                                      lp.Character.HumanoidRootPart.CFrame = base.CFrame + Vector3.new(0, 5, 0)
+                                      break
+                                  end
+                              end
+                              task.wait(0.5) -- Время на сдачу
+                          end
+                      end
                   end
-               end
-            end)
-            task.wait(0.1)
-         end
-      end)
+                  
+                  if not foundEgg then
+                      print("Яйца не найдены, жду появления...")
+                      task.wait(2)
+                  end
+                  task.wait(0.1)
+              end
+          end)
+      else
+          Notify("Авто-фарм остановлен")
+      end
    end,
 })
 
--- ВКЛАДКА ИГРОК
+-- ВКЛАДКА: ИГРОК
 local PlayerTab = Window:CreateTab("👤 Player", 4483362458)
 
 PlayerTab:CreateSlider({
-   Name = "WalkSpeed",
+   Name = "Скорость бега",
    Range = {16, 300},
    Increment = 1,
    CurrentValue = 16,
@@ -89,29 +93,33 @@ PlayerTab:CreateSlider({
 })
 
 PlayerTab:CreateButton({
-   Name = "Infinite Jump (Бесконечный прыжок)",
+   Name = "Infinite Jump (Прыжки в воздухе)",
    Callback = function()
       game:GetService("UserInputService").JumpRequest:Connect(function()
           lp.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
       end)
+      Notify("Бесконечный прыжок включен")
    end,
 })
 
--- ВКЛАДКА ВИЗУАЛ
+-- ВКЛАДКА: ВИЗУАЛ
 local VisualTab = Window:CreateTab("👁 Visuals", 4483362458)
 
 VisualTab:CreateButton({
-   Name = "ESP: Показать все яйца",
+   Name = "ESP: Подсветить яйца",
    Callback = function()
+      local count = 0
       for _, v in pairs(workspace:GetDescendants()) do
          if v.Name:lower():find("egg") and v:IsA("BasePart") then
             if not v:FindFirstChild("Highlight") then
                 local h = Instance.new("Highlight", v)
-                h.FillColor = Color3.fromRGB(255, 0, 0)
+                h.FillColor = Color3.fromRGB(0, 255, 0)
+                count = count + 1
             end
          end
       end
+      Notify("Подсвечено объектов: " .. count)
    end,
 })
 
-Rayfield:LoadConfiguration()
+Rayfield:Notify({Title = "IZI HUB", Content = "Скрипт готов к работе!", Duration = 5})
